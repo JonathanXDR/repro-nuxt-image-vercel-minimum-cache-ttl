@@ -1,0 +1,16 @@
+{
+  "name": "repro-nuxt-image-vercel-minimum-cache-ttl",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "postinstall": "nuxi prepare",
+    "typecheck": "nuxi typecheck",
+    "build": "nuxi build"
+  },
+  "devDependencies": {
+    "@nuxt/image": "2.0.0",
+    "nuxt": "4.4.6",
+    "typescript": "~5.9.0",
+    "vue-tsc": "~3.0.0"
+  }
+}
