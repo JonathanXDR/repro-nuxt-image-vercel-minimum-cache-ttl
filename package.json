@@ -4,13 +4,14 @@
   "type": "module",
   "scripts": {
     "postinstall": "nuxi prepare",
-    "typecheck": "nuxi typecheck",
-    "build": "nuxi build"
+    "dev": "nuxi dev",
+    "build": "nuxi build",
+    "inspect:vercel-config": "node -e \"const fs=require('node:fs');const p='.vercel/output/config.json';if(!fs.existsSync(p)){console.error('Run \\'npm run build\\' first.');process.exit(1)}const c=JSON.parse(fs.readFileSync(p,'utf8'));console.log('images.minimumCacheTTL =',c.images?.minimumCacheTTL)\""
   },
   "devDependencies": {
     "@nuxt/image": "2.0.0",
     "nuxt": "4.4.6",
-    "typescript": "~5.9.0",
-    "vue-tsc": "~3.0.0"
+    "typescript": "6.0.3",
+    "vue-tsc": "3.3.2"
   }
 }
