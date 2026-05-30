@@ -1,0 +1,37 @@
+{
+  "date": "2026-05-30T11:30:52.647Z",
+  "preset": "vercel",
+  "framework": {
+    "name": "nuxt",
+    "version": "4.4.6"
+  },
+  "versions": {
+    "nitro": "2.13.4"
+  },
+  "commands": {
+    "preview": "",
+    "deploy": "npx vercel deploy --prebuilt"
+  },
+  "config": {
+    "vercel": {
+      "skewProtection": false,
+      "config": {
+        "images": {
+          "domains": [],
+          "minimumCacheTTL": 300,
+          "sizes": [
+            640,
+            768,
+            1024,
+            1280,
+            1536
+          ],
+          "formats": [
+            "image/webp",
+            "image/avif"
+          ]
+        }
+      }
+    }
+  }
+}

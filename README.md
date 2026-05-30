@@ -1,48 +1,39 @@
 # Repro: `@nuxt/image@2.0.0` vercel provider hard-codes `minimumCacheTTL: 300`
 
-Minimal Nuxt 4 project showing that `@nuxt/image`'s vercel provider writes
-`minimumCacheTTL: 60 * 5` (5 minutes) into `nitro.vercel.config.images` with
-no module-level option to change it. The only escape hatch is overriding
-`nitro.vercel.config.images.minimumCacheTTL` directly, which bypasses the
-provider's `defu` merge path for the rest of the image config.
+Minimal Nuxt 4 project showing that `@nuxt/image`'s vercel provider
+writes `minimumCacheTTL: 60 * 5` (5 minutes) into
+`nitro.vercel.config.images` with no module-level option to change it.
+The only escape hatch is overriding `nitro.vercel.config.images.minimumCacheTTL`
+directly, which bypasses the provider's `defu` merge path for the rest
+of the image config.
+
+> On a real Vercel deploy the provider is auto-detected via `std-env`
+> (which reads `VERCEL=1`). Locally that env var is not set, so the
+> repro opts in explicitly with `image: { vercel: {} }` to trigger the
+> same provider setup hook.
 
 ## Steps to reproduce
 
 ```bash
 npm install
 npm run build
+npm run inspect:vercel-config
+# images.minimumCacheTTL = 300
 ```
 
-1. `nuxi build` runs the Vercel preset, which invokes the @nuxt/image vercel
-   provider setup.
-2. Inspect the generated `.vercel/output/config.json`:
-
-   ```bash
-   cat .vercel/output/config.json
-   ```
-
-   The `images` block contains:
-
-   ```jsonc
-   {
-     "images": {
-       "domains": [],
-       "minimumCacheTTL": 300,
-       "sizes": [320, 640, 768, 1024, 1280, 1536],
-       "formats": ["image/webp", "image/avif"]
-     }
-   }
-   ```
-
-3. There is no `image.providers.vercel.options.minimumCacheTTL` (or
-   `image.minimumCacheTTL`) on the module — confirm by attempting to set
-   one and observing it is ignored.
+1. `nuxi build` runs the Vercel preset and triggers the @nuxt/image
+   vercel provider's setup hook.
+2. `npm run inspect:vercel-config` reads `.vercel/output/config.json`
+   and prints the `images.minimumCacheTTL` value.
+3. Output is `300`, which matches the hard-coded `60 * 5` in the
+   provider source. There is no `image.providers.vercel.options.minimumCacheTTL`
+   or `image.minimumCacheTTL` on the module.
 
 ## Expected behaviour
 
-`@nuxt/image` exposes a typed option (e.g.
-`image.providers.vercel.options.minimumCacheTTL`) that flows through the
-same `defu` merge as `domains` / `sizes` / `formats`.
+`@nuxt/image` exposes a typed option such as
+`image.providers.vercel.options.minimumCacheTTL` that flows through the
+same `defu` merge as `domains`, `sizes`, `formats`.
 
 ## Actual behaviour
 
@@ -62,7 +53,7 @@ vercel(providerOptions, moduleOptions, nuxt) {
       config: {
         images: {
           domains: moduleOptions.domains,
-          minimumCacheTTL: 60 * 5,                          // ← hard-coded
+          minimumCacheTTL: 60 * 5,                          // hard-coded
           sizes: Array.from(new Set(Object.values(moduleOptions.screens || {}))),
           formats: providerOptions.options?.formats
             ?? ['image/webp', 'image/avif'],
@@ -74,18 +65,20 @@ vercel(providerOptions, moduleOptions, nuxt) {
 ```
 
 The other Vercel-image fields (`domains`, `sizes`, `formats`) read from
-`moduleOptions` / `providerOptions.options`. `minimumCacheTTL` is the only
-one that does not, so there is no way to tune it without reaching outside
-the module.
+`moduleOptions` or `providerOptions.options`. `minimumCacheTTL` is the
+only one that does not, so there is no way to tune it without reaching
+outside the module.
 
 ## Why it matters
 
 Vercel's image-optimizer cache TTL is the floor for remote-image cache
-invalidation. 5 minutes is far too low for remote sources (e.g. GitHub
-repo covers, Apple Music artwork) that change rarely — every cache miss
-hits upstream and counts against the image transformation quota. Vercel
-[explicitly recommends tuning it per project](https://vercel.com/docs/image-optimization#remote-image-cache-expiration);
-local images on the same provider default to 31 days.
+invalidation. 5 minutes is far too low for remote sources (for example
+GitHub repo covers, music artwork) that change rarely. Every cache
+miss hits upstream and counts against the image transformation quota.
+Vercel
+[explicitly recommends tuning](https://vercel.com/docs/image-optimization#remote-image-cache-expiration)
+this per-project, and local images on the same provider default to 31
+days.
 
 ## User-side workaround
 
@@ -102,20 +95,21 @@ nitro: {
 },
 ```
 
-`defu` lets the user config win on first arg, so the override sticks, but
-it skips the module's merging path for `domains` / `sizes` / `formats` —
-a regression risk for any future change to the provider.
+`defu` lets the user config win on first arg, so the override sticks,
+but it skips the module's merging path for `domains`, `sizes`,
+`formats`. This is a regression risk for any future change to the
+provider.
 
 ## Related upstream activity
 
 No existing issue or PR addresses this gap at the time of writing. The
-adjacent `awsAmplify` provider in the same module (`module.js:137`)
-exposes the same `minimumCacheTTL: 60 * 5` hard-coding, so a generalised
-fix would help both providers.
+adjacent `awsAmplify` provider in the same module (`module.js` line
+137) exposes the same `minimumCacheTTL: 60 * 5` hard-coding, so a
+generalised fix would help both providers.
 
 ## Environment
 
 - `nuxt@4.4.6`
 - `@nuxt/image@2.0.0`
 - `typescript@6.0.3`
-- Node.js ≥ 20.19
+- Node.js v24.16.0
